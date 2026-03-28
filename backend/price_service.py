@@ -15,11 +15,12 @@ PRICE_FEEDS = {
 
 
 class PriceService:
-    def __init__(self):
+    def __init__(self, broadcast_callback=None):
         self.prices: Dict[AssetType, float] = {}
         self.websocket = None
         self.connection_task = None
         self.is_connected = False
+        self.broadcast_callback = broadcast_callback
     
     async def start(self):
         """Start the price feed WebSocket connection."""
@@ -92,4 +93,15 @@ class PriceService:
                     if price_str and expo is not None:
                         actual_price = self.calculate_price(price_str, expo)
                         self.prices[asset] = actual_price
+                        
+                        if self.broadcast_callback:
+                            asyncio.create_task(
+                                self.broadcast_callback({
+                                    "type": "price_update",
+                                    "data": {
+                                        "asset": asset.value,
+                                        "price": actual_price
+                                    }
+                                })
+                            )
                 break

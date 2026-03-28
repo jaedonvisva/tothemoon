@@ -6,11 +6,12 @@ from models import Position, PositionStatus, Direction, AssetType
 
 
 class PositionManager:
-    def __init__(self, price_service):
+    def __init__(self, price_service, broadcast_callback=None):
         self.positions: Dict[str, Position] = {}
-        self.balance = 1000.0
+        self.balance = 100000.0
         self.price_service = price_service
         self.active_tasks: Dict[str, asyncio.Task] = {}
+        self.broadcast_callback = broadcast_callback
     
     def calculate_stop_loss(self, leverage: float) -> float:
         """Calculate stop loss percentage based on leverage."""
@@ -63,6 +64,14 @@ class PositionManager:
         task = asyncio.create_task(self._countdown_and_open(position_id))
         self.active_tasks[position_id] = task
         
+        if self.broadcast_callback:
+            asyncio.create_task(
+                self.broadcast_callback({
+                    "type": "position_update",
+                    "data": position.to_dict()
+                })
+            )
+        
         return position, self.balance
     
     async def _countdown_and_open(self, position_id: str):
@@ -84,6 +93,12 @@ class PositionManager:
         position.current_price = current_price
         position.status = PositionStatus.OPEN.value
         position.opened_at = datetime.utcnow().isoformat()
+        
+        if self.broadcast_callback:
+            await self.broadcast_callback({
+                "type": "position_update",
+                "data": position.to_dict()
+            })
         
         await self._track_position(position_id)
     
@@ -120,10 +135,21 @@ class PositionManager:
             time_remaining = (end_time - datetime.utcnow()).total_seconds()
             position.time_remaining = max(0, time_remaining)
             
+            if self.broadcast_callback:
+                await self.broadcast_callback({
+                    "type": "position_update",
+                    "data": position.to_dict()
+                })
+            
             if is_liquidated:
                 position.status = PositionStatus.LIQUIDATED.value
                 position.closed_at = datetime.utcnow().isoformat()
                 position.time_remaining = 0
+                if self.broadcast_callback:
+                    await self.broadcast_callback({
+                        "type": "position_update",
+                        "data": position.to_dict()
+                    })
                 if position_id in self.active_tasks:
                     del self.active_tasks[position_id]
                 return
@@ -149,6 +175,14 @@ class PositionManager:
             position.status = PositionStatus.CLOSED_LOSS.value
         
         self.balance += max(0, final_amount)
+        
+        if self.broadcast_callback:
+            asyncio.create_task(
+                self.broadcast_callback({
+                    "type": "position_update",
+                    "data": position.to_dict()
+                })
+            )
         
         if position_id in self.active_tasks:
             del self.active_tasks[position_id]

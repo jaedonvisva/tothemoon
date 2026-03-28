@@ -115,6 +115,58 @@ Reset balance to $1000 (for testing).
 }
 ```
 
+### WebSocket
+
+#### `WS /ws`
+Real-time WebSocket connection for live price and position updates.
+
+**Connection:**
+```javascript
+const ws = new WebSocket('ws://localhost:8000/ws');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'price_update') {
+    // { type: 'price_update', data: { asset: 'BTC', price: 66850.0 } }
+    console.log(`${message.data.asset}: $${message.data.price}`);
+  } else if (message.type === 'position_update') {
+    // { type: 'position_update', data: { id: '...', status: 'OPEN', pnl_percent: 0.5, ... } }
+    console.log(`Position ${message.data.id}: ${message.data.pnl_percent}%`);
+  }
+};
+```
+
+**Message Types:**
+
+- **price_update**: Sent whenever a price changes (~100ms intervals)
+  ```json
+  {
+    "type": "price_update",
+    "data": {
+      "asset": "BTC",
+      "price": 66850.25
+    }
+  }
+  ```
+
+- **position_update**: Sent when positions are created, updated, or closed
+  ```json
+  {
+    "type": "position_update",
+    "data": {
+      "id": "abc-123",
+      "asset": "BTC",
+      "direction": "LONG",
+      "status": "OPEN",
+      "pnl_percent": 0.5,
+      "pnl_dollars": 0.25,
+      "time_remaining": 25.0,
+      ...
+    }
+  }
+  ```
+
 ### Position Management
 
 #### `POST /positions/open`
@@ -410,7 +462,25 @@ curl http://localhost:8000/balance
 
 ### Frontend Integration Example
 
+**Using WebSocket (Recommended):**
 ```javascript
+// Connect to WebSocket for live updates
+const ws = new WebSocket('ws://localhost:8000/ws');
+const prices = {};
+const positions = new Map();
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'price_update') {
+    prices[message.data.asset] = message.data.price;
+    updatePriceDisplay(message.data.asset, message.data.price);
+  } else if (message.type === 'position_update') {
+    positions.set(message.data.id, message.data);
+    updatePositionDisplay(message.data);
+  }
+};
+
 // Open a position
 const response = await fetch('http://localhost:8000/positions/open', {
   method: 'POST',
@@ -425,19 +495,25 @@ const response = await fetch('http://localhost:8000/positions/open', {
 });
 
 const { position, balance } = await response.json();
+// Position updates will arrive automatically via WebSocket
+```
 
-// Poll position status
-const interval = setInterval(async () => {
-  const status = await fetch(`http://localhost:8000/positions/${position.id}`);
-  const data = await status.json();
+**React Hook Example:**
+```typescript
+// See /frontend/src/hooks/useWebSocket.ts
+import { useMoonshotWebSocket } from './hooks/useWebSocket';
+
+function App() {
+  const { prices, positions, connected } = useMoonshotWebSocket();
   
-  console.log(`P&L: ${data.pnl_percent}%`, `Time: ${data.time_remaining}s`);
-  
-  if (data.status !== 'OPEN' && data.status !== 'PENDING') {
-    clearInterval(interval);
-    console.log(`Final status: ${data.status}`);
-  }
-}, 100);
+  return (
+    <div>
+      <div>Status: {connected ? 'Connected' : 'Disconnected'}</div>
+      <div>BTC: ${prices.BTC}</div>
+      <div>Active Positions: {positions.size}</div>
+    </div>
+  );
+}
 ```
 
 ## Troubleshooting

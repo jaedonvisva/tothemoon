@@ -1,6 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
+import json
+from typing import Set
 import models
 from models import (
     OpenPositionRequest, 
@@ -13,8 +16,32 @@ from price_service import PriceService
 from position_manager import PositionManager
 
 
-price_service = PriceService()
-position_manager = PositionManager(price_service)
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+    
+    async def broadcast(self, message: dict):
+        disconnected = set()
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                disconnected.add(connection)
+        
+        for connection in disconnected:
+            self.disconnect(connection)
+
+
+manager = ConnectionManager()
+price_service = PriceService(broadcast_callback=manager.broadcast)
+position_manager = PositionManager(price_service, broadcast_callback=manager.broadcast)
 
 
 @asynccontextmanager
@@ -124,12 +151,22 @@ async def get_all_positions():
 
 @app.post("/balance/reset")
 async def reset_balance():
-    position_manager.set_balance(1000.0)
+    position_manager.set_balance(100000.0)
     response = BalanceResponse(
         balance=position_manager.get_balance(),
         wallet_address=None
     )
     return response.to_dict()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 if __name__ == "__main__":
