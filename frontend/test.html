@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moonshot Backend Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #10b981;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #27272a;
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: #a1a1aa;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc2626;
+        }
+        
+        .indicator.connected {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+        
+        .prices {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .price-card {
+            background: #27272a;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #10b981;
+        }
+        
+        .price-card.btc { border-left-color: #f59e0b; }
+        .price-card.eth { border-left-color: #3b82f6; }
+        .price-card.sol { border-left-color: #a855f7; }
+        
+        .price-label {
+            font-size: 12px;
+            color: #71717a;
+            margin-bottom: 5px;
+        }
+        
+        .price-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        select, input, button {
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            color: #e0e0e0;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #10b981;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #3f3f46;
+            color: #71717a;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .position-card {
+            background: #27272a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .position-card.win { border-left-color: #10b981; }
+        .position-card.loss { border-left-color: #dc2626; }
+        .position-card.liquidated { border-left-color: #f59e0b; }
+        
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .position-id {
+            font-size: 12px;
+            color: #71717a;
+        }
+        
+        .position-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #3f3f46;
+        }
+        
+        .position-status.open { background: #3b82f6; color: #000; }
+        .position-status.pending { background: #f59e0b; color: #000; }
+        .position-status.win { background: #10b981; color: #000; }
+        .position-status.loss { background: #dc2626; }
+        .position-status.liquidated { background: #f59e0b; }
+        
+        .position-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 13px;
+        }
+        
+        .detail-label {
+            color: #71717a;
+            font-size: 11px;
+        }
+        
+        .detail-value {
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+        
+        .pnl {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .pnl.positive { color: #10b981; }
+        .pnl.negative { color: #dc2626; }
+        
+        .log {
+            background: #000;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            color: #a1a1aa;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        
+        .log-entry.error { color: #dc2626; }
+        .log-entry.success { color: #10b981; }
+        .log-entry.info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Moonshot Backend Test</h1>
+        
+        <div class="section">
+            <h2>Connection Status</h2>
+            <div class="status">
+                <div class="indicator" id="ws-indicator"></div>
+                <span id="ws-status">Connecting...</span>
+            </div>
+            <div class="status">
+                <div class="indicator" id="api-indicator"></div>
+                <span id="api-status">Checking API...</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Live Prices (via WebSocket)</h2>
+            <div class="prices">
+                <div class="price-card btc">
+                    <div class="price-label">BTC/USD</div>
+                    <div class="price-value" id="price-btc">--</div>
+                </div>
+                <div class="price-card eth">
+                    <div class="price-label">ETH/USD</div>
+                    <div class="price-value" id="price-eth">--</div>
+                </div>
+                <div class="price-card sol">
+                    <div class="price-label">SOL/USD</div>
+                    <div class="price-value" id="price-sol">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Open Test Position</h2>
+            <div class="controls">
+                <select id="asset">
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="SOL">SOL</option>
+                </select>
+                <select id="direction">
+                    <option value="LONG">LONG</option>
+                    <option value="SHORT">SHORT</option>
+                </select>
+                <input type="number" id="leverage" value="2000" min="1" max="100000" step="0.1" placeholder="Leverage (x)" style="width: 120px;">
+                <input type="number" id="stake" value="500" min="1" max="10000" placeholder="Stake">
+                <input type="number" id="duration" value="15" min="5" max="45" step="5" placeholder="Duration (s)">
+                <button id="open-position" onclick="openPosition()">Open Position</button>
+            </div>
+            <div style="margin-top: 10px; color: #71717a; font-size: 13px;">
+                Balance: $<span id="balance">--</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Active Positions (<span id="position-count">0</span>)</h2>
+            <div id="positions"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Event Log</h2>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const WS_URL = 'ws://localhost:8000/ws';
+        
+        let ws = null;
+        let positions = new Map();
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            
+            if (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+        
+        function updateWSStatus(connected) {
+            const indicator = document.getElementById('ws-indicator');
+            const status = document.getElementById('ws-status');
+            
+            if (connected) {
+                indicator.classList.add('connected');
+                status.textContent = 'WebSocket Connected';
+                log('WebSocket connected', 'success');
+            } else {
+                indicator.classList.remove('connected');
+                status.textContent = 'WebSocket Disconnected';
+                log('WebSocket disconnected', 'error');
+            }
+        }
+        
+        function connectWebSocket() {
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = () => {
+                updateWSStatus(true);
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'price_update') {
+                    const { asset, price } = message.data;
+                    const priceEl = document.getElementById(`price-${asset.toLowerCase()}`);
+                    if (priceEl) {
+                        priceEl.textContent = '$' + price.toFixed(2);
+                    }
+                } else if (message.type === 'position_update') {
+                    positions.set(message.data.id, message.data);
+                    updatePositions();
+                    log(`Position ${message.data.id.substring(0, 8)}... ${message.data.status}`, 'info');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                log('WebSocket error', 'error');
+            };
+            
+            ws.onclose = () => {
+                updateWSStatus(false);
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+        
+        async function checkAPI() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                const indicator = document.getElementById('api-indicator');
+                const status = document.getElementById('api-status');
+                
+                indicator.classList.add('connected');
+                status.textContent = `API Online (${data.active_positions} active positions)`;
+                log('API health check passed', 'success');
+                
+                return true;
+            } catch (error) {
+                log('API not reachable: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        async function fetchBalance() {
+            try {
+                const response = await fetch(`${API_URL}/balance`);
+                const data = await response.json();
+                document.getElementById('balance').textContent = data.balance.toFixed(2);
+            } catch (error) {
+                log('Failed to fetch balance', 'error');
+            }
+        }
+        
+        async function openPosition() {
+            const button = document.getElementById('open-position');
+            button.disabled = true;
+            
+            try {
+                const position = {
+                    asset: document.getElementById('asset').value,
+                    direction: document.getElementById('direction').value,
+                    leverage: parseFloat(document.getElementById('leverage').value),
+                    stake: parseFloat(document.getElementById('stake').value),
+                    duration: parseInt(document.getElementById('duration').value)
+                };
+                
+                log(`Opening ${position.direction} ${position.asset} @ ${position.leverage}x`, 'info');
+                
+                const response = await fetch(`${API_URL}/positions/open`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(position)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                
+                const data = await response.json();
+                positions.set(data.position.id, data.position);
+                updatePositions();
+                fetchBalance();
+                
+                log(`Position opened: ${data.position.id.substring(0, 8)}...`, 'success');
+            } catch (error) {
+                log('Failed to open position: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+            }
+        }
+        
+        function updatePositions() {
+            const positionsDiv = document.getElementById('positions');
+            const countSpan = document.getElementById('position-count');
+            
+            countSpan.textContent = positions.size;
+            
+            if (positions.size === 0) {
+                positionsDiv.innerHTML = '<div style="color: #71717a; padding: 20px; text-align: center;">No positions yet</div>';
+                return;
+            }
+            
+            const sortedPositions = Array.from(positions.values()).sort((a, b) => {
+                const order = { PENDING: 0, OPEN: 1, LIQUIDATED: 2, CLOSED_LOSS: 3, CLOSED_WIN: 4 };
+                return (order[a.status] || 5) - (order[b.status] || 5);
+            });
+            
+            positionsDiv.innerHTML = sortedPositions.map(pos => {
+                const statusClass = pos.status.toLowerCase().replace('_', '-');
+                const pnlClass = pos.pnl_percent >= 0 ? 'positive' : 'negative';
+                
+                return `
+                    <div class="position-card ${statusClass}">
+                        <div class="position-header">
+                            <span class="position-id">${pos.id}</span>
+                            <span class="position-status ${statusClass}">${pos.status}</span>
+                        </div>
+                        <div class="position-details">
+                            <div>
+                                <div class="detail-label">Asset</div>
+                                <div class="detail-value">${pos.asset} ${pos.direction}</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">Leverage</div>
+                                <div class="detail-value">${pos.leverage}x</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">Stake</div>
+                                <div class="detail-value">$${pos.stake.toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">Entry</div>
+                                <div class="detail-value">${pos.entry_price ? '$' + pos.entry_price.toFixed(2) : '--'}</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">Current</div>
+                                <div class="detail-value">${pos.current_price ? '$' + pos.current_price.toFixed(2) : '--'}</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">Time Left</div>
+                                <div class="detail-value">${pos.time_remaining ? pos.time_remaining.toFixed(1) + 's' : '--'}</div>
+                            </div>
+                            <div>
+                                <div class="detail-label">P&L</div>
+                                <div class="pnl ${pnlClass}">
+                                    ${pos.pnl_percent >= 0 ? '+' : ''}${pos.pnl_percent.toFixed(2)}%
+                                    (${pos.pnl_dollars >= 0 ? '+' : ''}$${pos.pnl_dollars.toFixed(2)})
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Initialize
+        async function init() {
+            log('Initializing test page...', 'info');
+            
+            const apiReady = await checkAPI();
+            if (apiReady) {
+                await fetchBalance();
+                connectWebSocket();
+            } else {
+                log('Waiting for backend to be available...', 'error');
+                setTimeout(init, 3000);
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
