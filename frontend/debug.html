@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Debug</title>
+    <style>
+        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
+        .log { background: #111; padding: 10px; border: 1px solid #333; height: 400px; overflow-y: auto; }
+        .price { color: #0ff; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .info { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Debug</h1>
+    <div id="status">Connecting...</div>
+    <div id="log"></div>
+    
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message, type = '') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        const ws = new WebSocket('ws://localhost:8000/ws');
+        
+        ws.onopen = () => {
+            status.textContent = 'Connected';
+            status.style.color = '#0f0';
+            addLog('WebSocket connected', 'success');
+        };
+        
+        ws.onmessage = (event) => {
+            addLog(`Received: ${event.data}`, 'info');
+            
+            try {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'price_update') {
+                    addLog(`Price: ${message.data.asset} = $${message.data.price}`, 'price');
+                } else if (message.type === 'position_update') {
+                    addLog(`Position: ${message.data.id} - ${message.data.status}`, 'info');
+                }
+            } catch (e) {
+                addLog(`Parse error: ${e.message}`, 'error');
+            }
+        };
+        
+        ws.onerror = (error) => {
+            status.textContent = 'Error';
+            status.style.color = '#f00';
+            addLog(`WebSocket error: ${error}`, 'error');
+        };
+        
+        ws.onclose = () => {
+            status.textContent = 'Disconnected';
+            status.style.color = '#f00';
+            addLog('WebSocket disconnected', 'error');
+        };
+        
+        // Test API
+        fetch('http://localhost:8000/prices')
+            .then(r => r.json())
+            .then(data => {
+                addLog(`API Prices: BTC=$${data.prices.BTC}, ETH=$${data.prices.ETH}, SOL=$${data.prices.SOL}`, 'success');
+            })
+            .catch(e => addLog(`API Error: ${e.message}`, 'error'));
+    </script>
+</body>
+</html>
