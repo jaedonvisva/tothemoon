@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Use Supabase direct connection (port 5432) here for Bun + migrate deploy.
+  // If you later use a transaction pooler for runtime only, see Prisma "directUrl" docs and add DIRECT_URL.
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id
+  balance   Float      @default(1000)
+  createdAt DateTime   @default(now())
+  positions Position[]
+  payments  Payment[]
+}
+
+model Position {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+
+  asset           String
+  direction       String
+  displayLeverage Float
+  realLeverage    Float
+  duration        Int
+  stake           Float
+
+  status          String
+  entryPrice      Float?
+  closePrice      Float?
+  openedAt        DateTime?
+  closedAt        DateTime?
+  expiresAt       DateTime?
+
+  realPnlPct      Float?
+  displayPnlPct   Float?
+  displayPnlUsd   Float?
+  liquidated      Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  stripeSessionId String   @unique
+  amountUsd       Float
+  credits         Float
+  status          String
+  createdAt       DateTime @default(now())
+}

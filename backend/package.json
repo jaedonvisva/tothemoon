@@ -1,0 +1,28 @@
+{
+  "name": "moonshot-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.2",
+    "@prisma/client": "^6.4.1",
+    "@privy-io/server-auth": "^1.18.9",
+    "hono": "^4.7.4",
+    "ioredis": "^5.5.0",
+    "stripe": "^17.7.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.4",
+    "prisma": "^6.4.1",
+    "typescript": "^5.8.2"
+  }
+}

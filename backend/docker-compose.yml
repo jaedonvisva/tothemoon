@@ -1,0 +1,24 @@
+# Optional local Postgres + Redis when not using Supabase / cloud Redis.
+# Requires Docker Desktop (or another engine) — if `docker` is not found, use Supabase + brew/Upstash Redis instead (see README).
+# Usage: docker compose up -d   (or: docker-compose up -d if the compose plugin is missing)
+# Then set DATABASE_URL and REDIS_URL in .env
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: moonshot
+      POSTGRES_PASSWORD: moonshot
+      POSTGRES_DB: moonshot
+    ports:
+      - "5432:5432"
+    volumes:
+      - moonshot_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  moonshot_pg:
