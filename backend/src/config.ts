@@ -21,4 +21,10 @@ export const config = {
   startingBalance: num(process.env.STARTING_BALANCE, 1000),
   realMaxLeverage: num(process.env.REAL_MAX_LEVERAGE, 50),
   pendingConfirmSeconds: 30,
+  // Hedge config
+  hedgeEnabled: process.env.HEDGE_ENABLED === "true",
+  hedgeWalletPrivateKey: process.env.HEDGE_WALLET_PRIVATE_KEY ?? "",
+  creditUsdRate: num(process.env.CREDIT_USD_RATE, 0.10),
+  hedgeMinSizeUsd: num(process.env.HEDGE_MIN_SIZE_USD, 11),
+  hedgeLeverage: num(process.env.HEDGE_LEVERAGE, 40),
 }

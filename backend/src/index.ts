@@ -4,6 +4,7 @@ import { upgradeWebSocket, websocket } from "hono/bun"
 import { createPriceStore } from "./pyth/prices.js"
 import { PythClient } from "./pyth/client.js"
 import { startPositionTicker } from "./jobs/positionTicker.js"
+import { startHedgeTicker } from "./hedge/hedgeTicker.js"
 import { authMiddleware, getPrivy, type AuthVars } from "./middleware/auth.js"
 import { rateLimitMiddleware } from "./middleware/rateLimit.js"
 import { spinRoutes } from "./routes/spin.js"
@@ -18,7 +19,7 @@ import { ErrorCodes, jsonError } from "./lib/errors.js"
 import { wsSubscribe } from "./ws/registry.js"
 import { config } from "./config.js"
 import { getRedis } from "./lib/redis.js"
-import { scanOpenPositionIds } from "./services/positionLifecycle.js"
+import { scanOpenPositionIds, setHedgePriceStore } from "./services/positionLifecycle.js"
 
 export const priceStore = createPriceStore()
 const pythClient = new PythClient(priceStore)
@@ -134,6 +135,11 @@ app.get(
 
 pythClient.start()
 startPositionTicker(priceStore)
+setHedgePriceStore(priceStore)
+if (config.hedgeEnabled) {
+  startHedgeTicker(priceStore)
+  console.log("Hedge ticker started (30s interval)")
+}
 
 if (!config.databaseUrl) {
   console.warn("DATABASE_URL is not set; authenticated routes and Prisma will fail until it is configured.")

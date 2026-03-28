@@ -7,6 +7,20 @@ import { calcPnl } from "../engine/pnl.js"
 import { getPriceForAsset } from "../pyth/prices.js"
 import type { PriceStore } from "../pyth/prices.js"
 import { wsBroadcast } from "../ws/registry.js"
+import { reconcile } from "../hedge/hedgeManager.js"
+
+// priceStore reference set by index.ts after initialisation
+let _hedgePriceStore: PriceStore | null = null
+export function setHedgePriceStore(store: PriceStore): void {
+  _hedgePriceStore = store
+}
+
+function triggerHedgeReconcile(): void {
+  if (!config.hedgeEnabled || !_hedgePriceStore) return
+  void reconcile(_hedgePriceStore).catch(e => {
+    console.error("[hedge] reconcile error:", e instanceof Error ? e.message : e)
+  })
+}
 
 export async function persistOpenState(
   positionId: string,
@@ -81,6 +95,8 @@ export async function openPositionConfirmed(
 
   await deletePendingRedis(positionId)
   await persistOpenState(positionId, state, row.duration)
+
+  triggerHedgeReconcile()
 
   return { openedAt, closesAt }
 }
@@ -172,6 +188,8 @@ export async function closePositionFromTicker(
     displayPnlUsd: isLiq ? -state.stake : displayPnlUsd,
     newBalance,
   })
+
+  triggerHedgeReconcile()
 }
 
 async function reconcileOrphanOpen(
